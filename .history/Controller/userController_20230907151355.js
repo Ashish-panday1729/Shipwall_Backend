@@ -23,9 +23,8 @@ export const userRegister = async (req, res) => {
 
         const dateCreated = moment(new Date()).format("YYYY-MM-DD hh:mm:ss");
         const userId = req.userId;
-        const uploadResult = await cloudinary.v2.uploader.upload(file.path);
         const userData = await userDB({
-            fname, lname, email, mobile, gender, status, location, password, cpassword, profile: uploadResult.secure_url, dateCreated, Created_By: userId
+            fname, lname, email, mobile, gender, status, location, password, cpassword, profile: file, dateCreated, Created_By: userId
         });
 
         // hash password here
