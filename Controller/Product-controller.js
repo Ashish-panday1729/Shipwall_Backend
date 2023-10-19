@@ -101,7 +101,7 @@ export const getProductsBySearch = async (req, res) => {
 
         const query = {
             name: { $regex: search, $options: "i" },
-            category: categoryObjectId
+            // category: categoryObjectId
         };
 
         const total_products = await ProductDB.countDocuments(query);
@@ -113,6 +113,8 @@ export const getProductsBySearch = async (req, res) => {
         res.status(500).send({ message: "Internal server error" });
     }
 };
+
+
 
 // All product at a time
 export const getProducts = async (req, res) => {
