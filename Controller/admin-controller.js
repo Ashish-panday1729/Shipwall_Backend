@@ -29,7 +29,7 @@ export const userRegistration = async (req, res) => {
         console.log(error)
     }
 };
- // Admin login 
+// Admin login 
 export const userLogin = async (req, res) => {
     const { email, password } = req.body;
 

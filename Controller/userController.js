@@ -43,9 +43,10 @@ export const userRegisterByAdmin = async (req, res) => {
     try {
         const file = req.file;
 
-        const { fname, lname, email, mobile, gender, status, location, password, cpassword } = req.body;
+        const { fname, lname, email, mobile, gender, status, location, address, password, cpassword, accountNo, IFSC_code, bankName, branchName, branchCode } = req.body;
 
-        if (!fname || !lname || !email || !mobile || !gender || !status || !location || !file || !password || !cpassword) {
+        if (!fname || !lname || !email || !mobile || !gender || !status || !location || !file || !password || !cpassword || !address || !accountNo || !IFSC_code || !bankName || !branchName || !branchCode) {
+
             return res.status(401).send({ message: "All inputs are required!" });
         }
 
@@ -60,7 +61,11 @@ export const userRegisterByAdmin = async (req, res) => {
         const uploadResult = await cloudinary.v2.uploader.upload(file.path);
 
         const userData = await userDB({
-            fname, lname, email, mobile, gender, status, location, password, cpassword, profile: uploadResult.secure_url, dateCreated, Created_By: userId
+            fname, lname, email, mobile, gender, status, address, password, cpassword, accountNo, IFSC_code, bankName, branchName, branchCode,
+            Billing_address: [{ location }],
+            shipng_address: [{ address }],
+
+            profile: uploadResult.secure_url, dateCreated, Created_By: userId
         });
 
         // hash password here
@@ -73,44 +78,78 @@ export const userRegisterByAdmin = async (req, res) => {
     }
 };
 
-// User login 
-// export const userLoginWithStatus = async (req, res) => {
-//     const { email, password } = req.body;
-//     if (!email || !password) {
-//         return res.status(401).send({ success: false, message: "Please fill all the fields!" });
-//     }
-//     try {
-//         const userValid = await userDB.findOne({ email: email });
-//         if (userValid) {
-//             const isMatch = await bcrypt.compare(password, userValid.password);
-//             if (!isMatch) {
-//                 res.status(400).json({ message: "Invalid Credentials!" });
-//             } else {
-//                 if (userValid.status === "Active") {
-//                     // token generate 
-//                     const token = await userValid.generateAuthToken();
+//     <<--------------Complete crud Operation with  multiple shipping address starts here ----------------->>
+// post multiple shipping address 
+export const postMultipleShippingAddress = async (req, res) => {
+    try {
+        const { newAddress } = req.body;
 
-//                     const result = {
-//                         userValid,
-//                         token
-//                     };
-//                     res.status(201).send({ message: "Login Successful!", result });
+        const User = await userDB.findOne({ _id: req.userId });
+        if (!User) {
+            res.status(404).send({ message: "User not found" })
+        } else {
+            // console.log(findUser);
+            const newAddedAddress = await User.saveAddress(newAddress);
+            res.status(201).send({ success: true, data: newAddedAddress });
 
-//                 } else {
-//                     res.status(400).send({ message: "Your status is not approved by admin till now.Please wait!" })
-//                 }
-//             }
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({ message: "Internal server error!", error });
+    }
+};
 
+export const editShipAdress = async (req, res) => {
+    try {
+        const { newAddress, addressId } = req.body;
+        const userId = req.userId;
 
+        const updatedUser = await userDB.findOneAndUpdate(
+            { _id: userId, 'shipng_address._id': addressId },
+            { $set: { 'shipng_address.$.address': newAddress } },
+            { new: true }
+        );
 
-//         }
-//     } catch (error) {
-//         console.log("Error while login: ", error);
-//     }
-// };
+        if (!updatedUser) {
+            return res.status(404).send({ message: "User or address not found" });
+        }
+
+        res.status(200).send({ success: true, message: "Shipping address updated!", data: updatedUser.shipng_address });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Internal server error!" });
+    }
+};
+
+// delete ship-address
+export const clearAddress = async (req, res) => {
+    try {
+        const { addressId } = req.body;
+        const userId = req.userId;
+
+        const updatedUser = await userDB.findOneAndUpdate(
+            { _id: userId },
+            { $pull: { shipng_address: { _id: addressId } } },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).send({ message: "User or address not found" });
+        }
+
+        res.status(200).send({ message: "Shipping address deleted!", data: updatedUser.shipng_address });
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({ message: "Internal server error!" });
+    }
+}
+
+// <<--------------Complete crud with  multiple shipping address ends here ----------------->>
+
 
 // User login 
 export const userLoginWithStatus = async (req, res) => {
+
     const { email, password } = req.body;
     if (!email || !password) {
         return res.status(401).send({ success: false, message: "Please fill all the fields!" });
@@ -153,6 +192,7 @@ export const Valid_User = async (req, res) => {
         res.status(404).send({ message: "Not a valid user", error })
     }
 };
+
 // Logout User 
 export const logout_User = async (req, res) => {
     try {
@@ -262,6 +302,8 @@ export const updateUserDetails = async (req, res) => {
     }
 };
 
+
+
 // Delete user
 export const userDelete = async (req, res) => {
     try {
@@ -304,4 +346,34 @@ export const userExport = async (req, res) => {
     } catch (error) {
         console.log(error);
     }
-}
+};
+
+
+
+
+
+
+
+
+// <<----Unused api---------->>
+// update shiping address
+export const updateShipingAddress = async (req, res) => {
+    try {
+        const { address_2, address_1 } = req.body;
+
+        const validUser = await userDB.findOne({ _id: req.userId });
+        if (!validUser) {
+            res.status(404).send({ message: "User not found" })
+        } else {
+            const updateShipingAddress = await userDB.findByIdAndUpdate({ _id: validUser._id },
+                { shipng_address: [{ address_2, address_1 }] },
+                { new: true }
+            );
+            res.status(200).send({ success: true, message: "Shiping Address Updated", data: updateShipingAddress })
+
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({ message: "Internal server error" });
+    }
+};

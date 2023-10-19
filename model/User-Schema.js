@@ -53,17 +53,63 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    location: {
+
+    // changes
+    Billing_address: [
+        {
+            location: {
+                type: String,
+                required: true,
+            },
+
+        }
+    ],
+
+    shipng_address: [{
+        address: {
+            type: String,
+            trim: true
+        }
+    }],
+
+    // Bank details here
+    accountNo: {
+        type: String,
+        required: true
+    },
+    IFSC_code: {
         type: String,
         required: true,
+        trim: true
     },
+    bankName: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    branchName: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    branchCode: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    // bank details completed
+
     dateCreated: Date,
     dateUpdated: Date,
     Created_By: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user",
     },
-    
+    Created_By: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Seller-Employee",
+    },
+
     tokens: [
         {
             token: {
@@ -96,6 +142,27 @@ userSchema.methods.generateAuthToken = async function () {
     } catch (error) {
         console.log("token generate error: ", error);
         res.status(400).send(error)
+    }
+};
+
+// create address
+userSchema.methods.saveAddress = async function (newAddress) {
+    try {
+        this.shipng_address = await this.shipng_address.concat({ address: newAddress });
+        await this.save();
+        return newAddress;
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+// token remove
+userSchema.methods.removeToken = async function (token) {
+    try {
+        this.tokens = this.tokens.filter((t) => t.token !== token);
+        await this.save();
+    } catch (error) {
+        throw new Error('Error removing token');
     }
 }
 
